@@ -1,5 +1,7 @@
 import os
 import uuid
+import secrets
+import string
 from datetime import datetime
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
@@ -11,15 +13,24 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.pdfgen import canvas
 
 # ----------------------------------------------------------------------
-# 0. Dynamic LOT Number Generator (배포시마다 고유 로트번호/추적ID 생성)
+# 0. Dynamic Secret LOT Number Generator (어제 확정한 비밀 교차 암호화 로직)
 # ----------------------------------------------------------------------
-def generate_lot_id():
+def generate_lot_id(country_code='KR', daily_seq=1):
     """
-    구매자/배포시점 추적용 고유 LOT ID 생성 예: HM-20260903-B2B-9F8A1B2C
+    [영문1][십의자리][영문2][일의자리][영문3][난수] 형태의 비밀 교차 암호화 LOT ID 생성기
+    예: HM-20260906-KR-F0X1M9 (2번째 0, 4번째 1 -> 1번째 순번)
     """
     date_str = datetime.now().strftime("%Y%m%d")
-    unique_hash = uuid.uuid4().hex[:8].upper()
-    return f"HM-{date_str}-B2B-{unique_hash}"
+    country = country_code.upper()
+    
+    seq_str = f"{daily_seq:02d}"
+    d1, d2 = seq_str[0], seq_str[1]
+    
+    letters = [secrets.choice(string.ascii_uppercase) for _ in range(3)]
+    n3 = secrets.choice(string.digits)
+    
+    tail = f"{letters[0]}{d1}{letters[1]}{d2}{letters[2]}{n3}"
+    return f"HM-{date_str}-{country}-{tail}"
 
 
 # ----------------------------------------------------------------------
@@ -118,7 +129,7 @@ def generate_30p_pdf(filename=None, custom_lot_id=None, license_tier="enterprise
       - "professional": 59만 원 (1인 연구원 전용)
       - "enterprise": 450만 원 (기업/연구소 팀 전체 사이트 라이선스)
     """
-    current_dir = os.path.dirname(os.path.abspath(__file__))
+    current_dir = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.getcwd()
     if os.path.basename(current_dir) == "public":
         public_dir = current_dir
     else:
